@@ -4,14 +4,25 @@
     <meta charset="UTF-8">
     <title>Multimodal typing</title>
     <style>
-        #app {
-            font-size: 300%;
-            font-family: Arial, Helvetica, sans-serif;;
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        .hints {
+            margin-bottom: 5em;
+        }
+        .typing-area {
+            font-size: 7rem;
         }
     </style>
 </head>
 <body>
-<div id="app">{{ text }}</div>
+<div id="app">
+    <div class="hints">
+        einfach auf Tastatur tippen; Backspace = letztes Zeichen löschen; Esc = alles löschen; Enter = gesamten Text sprechen
+    </div>
+    <div class="typing-area">{{ text }}</div>
+</div>
 
 <script type="module">
     import { createApp } from './lib/vue.esm-browser.js'
