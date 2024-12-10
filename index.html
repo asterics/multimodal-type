@@ -3,8 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <title>Multimodal typing</title>
+    <style>
+        #app {
+            font-size: 300%;
+            font-family: Arial, Helvetica, sans-serif;;
+        }
+    </style>
 </head>
 <body>
+<div id="app">{{ text }}</div>
+
+<script type="module">
+    import { createApp } from './lib/vue.esm-browser.js'
+
+    createApp({
+        data() {
+            return {
+                text: '',
+                voices: speechSynthesis.getVoices()
+            }
+        },
+        methods: {
+            handleKeydown(event) {
+                let key = event.key;
+                let code = event.code;
+                if(!event.repeat && key.length === 1) {
+                    key = key.toUpperCase();
+                    this.text += key;
+                    this.speak(key);
+                }
+                if (code === 'Backspace') {
+                    this.speak("Löschen");
+                    this.text = this.text.slice(0, -1);
+                }
+                if (code === 'Escape') {
+                    this.speak("Alles gelöscht");
+                    this.text = "";
+                }
+                if (code === 'Enter') {
+                    this.speak(this.text);
+                }
+                if (code === 'Space') {
+                    let words = this.text.split(" ").filter(word => !!word);
+                    this.speak(words.pop());
+                }
+            },
+            speak(text) {
+                speechSynthesis.cancel();
+                this.voices = this.voices && this.voices.length > 0 ? this.voices : speechSynthesis.getVoices();
+                const utterThis = new SpeechSynthesisUtterance(text);
+                utterThis.voice = this.voices[0];
+                speechSynthesis.speak(utterThis);
+            }
+        },
+        mounted() {
+            addEventListener('keydown', this.handleKeydown);
+        }
+    }).mount('#app')
+</script>
 
 </body>
 </html>
