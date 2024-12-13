@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Multimodal Typing</title>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        .hints {
+            margin-bottom: 5em;
+            margin-top: 20px;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            background-color: #f9f9f9;
+            font-size: 1.5rem;
+        }
+        
+        .typing-area {
+            font-size: 4rem;
+            color: #333;
+            display: flex;
+            padding: 0.2em 0.2em;
+            letter-spacing: 3rem;
+        }
+
+        .target-text {
+            font-size: 4rem;
+            color: #555;
+            display: flex;
+            gap: 1.2rem;
+        }
+
+        .letter {
+            padding: 0.2em 0.15em;
+            border: 4px solid transparent;
+            border-radius: 8px;
+        }
+
+        .current {
+            border: 4px solid red;
+            color: red;
+        }
+
+        .typed {
+            color: green;
+        }
+		
+        .input-area {
+            margin-top: 2rem;
+            text-align: center;
+        }
+		
+        /* Styling the input field */
+        #targetInput {
+            font-size: 2rem;  /* Larger font size */
+            color: red;        /* Red font color */
+            padding: 0.5rem;
+            width: 100%;
+            max-width: 400px;
+            border: 2px solid #ccc;
+            border-radius: 5px;
+            margin-top: 1rem;
+            text-align: center;
+        }		
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="hints">
+       <h1>Geführtes Schreiben</h1>
+       Tippe den nächsten Buchstaben auf der Tastatur. Backspace = letztes Zeichen löschen; Esc = alles löschen; Enter = gesamten Text sprechen
+		<div class="input-area">
+			<label for="targetInput">Aufgabe:</label>
+			<input v-model="target" @input="updateTargetInput" id="targetInput" type="text" placeholder="HALLO KARIN" />
+		</div>
+    </div>
+
+
+    <div class="target-text">
+        <span v-for="(char, index) in target.split('')"
+              :class="['letter', { current: index === text.length, typed: index < text.length }]">
+            {{ char }}
+        </span>
+    </div>
+    <div class="typing-area">
+            {{ text }}
+    </div>
+</div>
+
+<script type="module">
+    import { createApp } from './lib/vue.esm-browser.js'
+
+    createApp({
+        data() {
+            return {
+                target: "HALLO KARIN", // The target word or sentence
+                text: '',
+                voices: speechSynthesis.getVoices(),
+                timeoutId: null,  // Store the timeout ID for inactivity
+                timeoutDuration: 10000  // 10 seconds timeout
+            }
+        },
+        methods: {
+            async handleKeydown(event) {
+			    if (document.activeElement === document.getElementById('targetInput')) {
+                    return; // Ignore the keydown event if the input field is focused
+                }
+				
+                let key = event.key.toUpperCase();
+                let code = event.code;
+
+                if (!event.repeat && key.length === 1) {
+                    // Check if the current key matches the next required letter
+                    if (this.target[this.text.length] === key) {
+                        this.text += key; // Add the correct key
+                        this.speak(key);
+                    }
+                    // Ignore wrong letters without resetting progress
+                }
+
+                if (code === 'Backspace') {
+                    this.speak("Löschen");
+                    this.text = this.text.slice(0, -1);
+                }
+
+                if (code === 'Escape') {
+                    this.speak("Alles gelöscht");
+                    this.text = '';
+                }
+
+                if (code === 'Enter') {
+                    this.speak(this.text);
+                }
+
+                if ((this.text === this.target) && (this.text != "")) {
+                    await this.speakAndWait("Super gemacht!");
+					await this.speakAndWait(this.text);
+                    this.text = '';
+                }
+
+                // Reset the timeout when a key is pressed
+                this.resetTimeout();
+            },
+            speak(text) {
+                speechSynthesis.cancel();
+                this.voices = this.voices && this.voices.length > 0 ? this.voices : speechSynthesis.getVoices();
+                const utterThis = new SpeechSynthesisUtterance(text);
+                utterThis.voice = this.voices[0];
+                speechSynthesis.speak(utterThis);
+            },
+   		    speakAndWait(text) {
+				return new Promise((resolve, reject) => {
+					speechSynthesis.cancel();
+					this.voices = this.voices && this.voices.length > 0 ? this.voices : speechSynthesis.getVoices();
+					const utterThis = new SpeechSynthesisUtterance(text);
+					utterThis.voice = this.voices[0];
+					
+					// Set up the onend event to resolve the promise when speaking finishes
+					utterThis.onend = () => {
+						resolve(); // Resolve when speech finishes
+					};
+
+					utterThis.onerror = (event) => {
+						reject(event); // Reject if there's an error during speech synthesis
+					};
+
+					// Start speaking
+					speechSynthesis.speak(utterThis);
+				});
+			},			
+            resetTimeout() {
+                // Clear the previous timeout (if any)
+                clearTimeout(this.timeoutId);
+                
+                // Set a new timeout to speak the current letter
+                this.timeoutId = setInterval(() => {
+                    const currentLetter = this.target[this.text.length];
+                    if (currentLetter) {
+						if (currentLetter != " ") 
+                          this.speak("Nächster Buchstabe: " + currentLetter);
+						else this.speak("Tippe ein Leerzeichen");
+                    }
+                }, this.timeoutDuration);
+            },
+            updateTargetInput() {
+                // Ensure the target text is always in uppercase
+                this.target = this.target.toUpperCase();
+				this.text = "";
+            }			
+        },
+        mounted() {
+            addEventListener('keydown', this.handleKeydown);
+            // Initialize the timeout when the page loads
+            this.resetTimeout();
+        }
+    }).mount('#app')
+</script>
+
+</body>
+</html>
